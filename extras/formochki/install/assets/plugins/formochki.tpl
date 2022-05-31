@@ -4,8 +4,8 @@
  * Отправка писем с данными из форм
  *
  * @category    plugin
- * @version     3.6
- * @date        11.05.2022
+ * @version     3.7
+ * @date        01.06.2022
  * @author      sergey.it@delta-ltd.ru
  * @internal    @events OnWebPageInit
  *
@@ -18,6 +18,8 @@ if ($e->name != 'OnWebPageInit' || ! isset($_GET['formochki'])) return;
 $version = '3.6';
 
 $upload_folder = 'assets/files/formochki/';
+
+$archiver = 'tar'; // tar || zip
 
 $forms = array(
 	1 => array(
@@ -73,6 +75,58 @@ $forms = array(
 
 // -------------------------------------------------------------------------------
 
+	function tarAddFile($tarfile, $file, $tofile)
+	{
+		if (is_dir($file)) {
+			$v_typeflag = '5';
+			$v_size = 0;
+		} else {
+			$v_typeflag = '';
+			$v_size = filesize($file);
+		}
+		$v_size = sprintf('%11s ', DecOct($v_size));
+		$v_mtime_data = filemtime($file);
+		$v_mtime = sprintf('%11s', DecOct($v_mtime_data));
+		$v_binary_data_first = pack('a100a8a8a8a12A12', $tofile, '', '', '', $v_size, $v_mtime);
+		$v_binary_data_last = pack('a1a100a6a2a32a32a8a8a155a12', $v_typeflag, '', '', '', '', '', '', '', '', '');
+		$v_checksum = 0;
+		for ($i=0; $i<148; $i++) $v_checksum += ord(substr($v_binary_data_first,$i,1));
+		for ($i=148; $i<156; $i++) $v_checksum += ord(' ');
+		for ($i=156, $j=0; $i<512; $i++, $j++) $v_checksum += ord(substr($v_binary_data_last,$j,1));
+		$v_checksum = sprintf('%6s ', DecOct($v_checksum));
+		$v_binary_data = pack('a8', $v_checksum);
+		$wrtres = fwrite($tarfile, $v_binary_data_first,148);
+		if ( ! $wrtres) return false;
+		$wrtres = fwrite($tarfile, $v_binary_data,8);
+		if ( ! $wrtres) return false;
+		$wrtres = fwrite($tarfile, $v_binary_data_last,356);
+		if ( ! $wrtres) return false;
+		$v_file = fopen($file,'rb');
+		if ( ! $v_file) return false;
+		while ( ! feof($v_file)) {
+			$v_buffer = fread($v_file,512);
+			if ( ! $v_buffer) break;
+			$v_binary_data = pack('a512',$v_buffer);
+			$wrtres = fwrite($tarfile, $v_binary_data);
+		}
+		fclose($v_file);
+		if ( ! $wrtres) return false;
+		return true;
+	}
+	function tarEmptyRow($tarfile)
+	{
+		return gzwrite($tarfile, pack('a512',''));
+	}
+	function tarOpen($tarfilepath, $mode='w')
+	{
+		$p_tar = fopen($tarfilepath, $mode.'b');
+		return $p_tar ? $p_tar : false;
+	}
+	function tarClose($tarfile)
+	{
+		return fclose($tarfile);
+	}
+
 $errors = $events_errors = $events_errors_p = '';
 
 $formid = intval($_POST['formid']);
@@ -92,23 +146,23 @@ foreach ($form['fields'] AS &$field) {
 	
 	if ($field['type'] == 'file') {
 		$value = $_FILES[$field['name']];
-		if ( ! is_array($value['name'])) continue;
+		if ( ! is_array($value) && ! is_array($value['name'])) continue;
+		
+		$archcreated = false;
+		$archext = 'tar';
+		$tarfile = false;
+		$zip = false;
+		if ($archiver == 'zip' && class_exists('ZipArchive')) {
+			$archext = 'zip';
+			$zip = new ZipArchive();
+		}
 		$folder = md5('_'.$_SERVER['REMOTE_ADDR']);
 		$folder = $upload_folder.$folder.'/';
 		if ( ! file_exists(MODX_BASE_PATH.$folder)) {
 			mkdir(MODX_BASE_PATH.$folder,0755,true);
 		}
-		$archfile = md5(time().'-'.rand()).'.zip';
-		$zip = new ZipArchive();
-		if ( ! $zip) {
-			$errors .= '<div>Не удалось загрузить файл (02)</div>';
-			continue;
-		}
-		$res = $zip->open(MODX_BASE_PATH.$folder.$archfile,ZIPARCHIVE::CREATE | ZIPARCHIVE::OVERWRITE);
-		if ( ! $res) {
-			$errors .= '<div>Не удалось загрузить файл (03)</div>';
-			continue;
-		}
+		$archfile = md5(time().'-'.rand()).'.'.$archext;
+		
 		$dounlink = $hashes = array();
 		$addedtoarch = false;
 		foreach ($value['name'] AS $flkey => $flrow) {
@@ -127,15 +181,41 @@ foreach ($form['fields'] AS &$field) {
 			$hash = md5_file($tmpfile);
 			if ($hashes[$hash]) continue;
 			$hashes[$hash] = true;
-			$res = $zip->addFile($tmpfile,$value['name'][$flkey]);
+			
+			if ( ! $archcreated) {
+				$res = false;
+				if ($archext == 'zip') {
+					$res = $zip->open(MODX_BASE_PATH.$folder.$archfile,ZIPARCHIVE::CREATE | ZIPARCHIVE::OVERWRITE);
+				} else {
+					$res = tarOpen(MODX_BASE_PATH.$folder.$archfile);
+					if ($res) $tarfile = $res;
+				}
+				if ( ! $res) {
+					$errors .= '<div>Не удалось загрузить файл (03)</div>';
+					break;
+				}
+				$archcreated = true;
+			}
+			
+			$res = false;
+			if ($archext == 'zip') {
+				$res = $zip->addFile($tmpfile, $value['name'][$flkey]);
+			} else {
+				$res = tarAddFile($tarfile, $tmpfile, $value['name'][$flkey]);
+			}
 			if ( ! $res) {
 				$errors .= '<div>Не удалось загрузить файл (04)</div>';
 				break;
 			}
 			$addedtoarch = true;
 		}
-		if ( ! $addedtoarch) continue;
-		$zip->close();
+		if ( ! $addedtoarch || ! $archcreated) continue;
+		if ($archext == 'zip') {
+			$zip->close();
+		} else {
+			tarEmptyRow($tarfile);
+			tarClose($tarfile);
+		}
 		foreach ($dounlink AS $unlnkrow) unlink($unlnkrow);
 		$value = MODX_SITE_URL.$folder.$archfile;
 		$fs = filesize(MODX_BASE_PATH.$folder.$archfile);
