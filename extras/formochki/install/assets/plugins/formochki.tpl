@@ -15,8 +15,6 @@
 $e = &$modx->event;
 if ($e->name != 'OnWebPageInit' || ! isset($_GET['formochki'])) return;
 
-$version = '3.6';
-
 $upload_folder = 'assets/files/formochki/';
 
 $archiver = 'tar'; // tar || zip
