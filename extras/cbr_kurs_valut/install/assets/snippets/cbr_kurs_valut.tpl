@@ -5,8 +5,8 @@
  * ЦБР Курс Валют
  *
  * @category  snippet
- * @version   2.1
- * @date      16.05.2022
+ * @version   2.2
+ * @date      01.06.2022
  * @author    sergey.it@delta-ltd.ru
  *
  */
@@ -16,10 +16,11 @@ $cbr_kurs_code = array(
 	'978' => 'eur',
 );
 $kurs_def = array(
-	'rub' => 1,
 	'usd' => 100,
 	'eur' => 100,
 );
+
+if ($type == 'rub') return 1;
 
 $nacenka = intval(trim($modx->getConfig('client_cbrf_nacenka')));
 $nacenka = 1 + ($nacenka ? $nacenka/100 : 0);
