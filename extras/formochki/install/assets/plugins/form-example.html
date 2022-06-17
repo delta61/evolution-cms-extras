@@ -1,0 +1,68 @@
+<div class="myformbox">
+	<div class="myform myform_1_[+num+] delta-mailer-form">
+		
+		<div class="frm_result frm_result_ok">Сообщение отправлено!</div>
+		
+		<form action="/" method="post">
+			
+			<div class="frm_row">
+				<div class="frm_input labelplaceholder addon">
+					<input id="frm1_[+num+]_fname" class="inp autosave" type="text" name="fname" />
+					<div class="frm_addon">[[svg?n=`user`]]</div>
+					<label for="frm1_[+num+]_fname">Как к вам обращаться?</label>
+				</div>
+			</div>
+			
+			<div class="frm_row">
+				<div class="frm_input labelplaceholder">
+					<input id="frm1_[+num+]_phone" class="inp autosave" type="text" name="phone" />
+					<div class="frm_addon">[[svg?n=`phone`]]</div>
+					<label for="frm1_[+num+]_phone">Номер телефона</label>
+				</div>
+			</div>
+			
+			<div class="frm_row">
+				<div class="frm_input labelplaceholder">
+					<input id="frm1_[+num+]_email" class="inp autosave" type="text" name="email" />
+					<div class="frm_addon">[[svg?n=`at`]]</div>
+					<label for="frm1_[+num+]_email">Электронная почта</label>
+				</div>
+			</div>
+			
+			<div class="frm_row">
+				<div class="frm_input labelplaceholder">
+					<textarea id="frm1_[+num+]_message" class="inp autosize autosave" name="message"></textarea>
+					<label for="frm1_[+num+]_message">Сообщение</label>
+				</div>
+			</div>
+			
+			<div class="frm_row">
+				<div class="frm_input frm_file frm_input_multi">
+					<input id="frm1_[+num+]_file" type="file" name="ufile[]" />
+					<label for="frm1_[+num+]_file">Прикрепите документы или фотографии</label>
+					<div class="frm_addon">[[svg?n=`attach`]]</div>
+					<div class="frm_clear">[[svg?n=`close`]]</div>
+				</div>
+			</div>
+			
+			<div class="frm_row">
+				<div class="frm_txt">{{privacy-policy-link? &nm=`Отправить`}}</div>
+			</div>
+			
+			<div class="frm_row frm_result frm_result_er"></div>
+			<div class="frm_row frm_loading_ico"></div>
+			
+			<div class="frm_row">
+				<div class="frm_submit">
+					<input type="hidden" name="formid" value="1" />
+					<input type="hidden" name="formnum" value="[+num+]" />
+					<input type="hidden" name="pageid" value="[*id*]" />
+					<input type="hidden" name="cntrl" value="0" />
+					<button type="submit" name="send" value="y">Отправить<i></i></button>
+				</div>
+			</div>
+			
+		</form>
+		
+	</div><!--myform_1-->
+</div><!--myformbox-->

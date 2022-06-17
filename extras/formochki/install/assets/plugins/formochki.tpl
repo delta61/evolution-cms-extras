@@ -4,8 +4,8 @@
  * Отправка писем с данными из форм
  *
  * @category    plugin
- * @version     3.7
- * @date        01.06.2022
+ * @version     3.8
+ * @date        17.06.2022
  * @author      sergey.it@delta-ltd.ru
  * @internal    @events OnWebPageInit
  *
@@ -13,9 +13,9 @@
  *
  */
 $e = &$modx->event;
-if ($e->name != 'OnWebPageInit' || ! isset($_GET['formochki'])) return;
+if ($e->name != 'OnWebPageInit' || ! isset($_GET['delta-mailer-form-send'])) return;
 
-$upload_folder = 'assets/files/formochki/';
+$upload_folder = 'assets/files/delta-mailer/';
 
 $archiver = 'tar'; // tar || zip
 
@@ -65,6 +65,12 @@ $forms = array(
 				'type'     => 'text',
 				'required' => true,
 				'required_text' => 'Укажите электронную почту',
+			),
+			array(
+				'label'         => array('Файлы','Вложения','Документы'),
+				'name'          => 'ufile',
+				'type'          => 'file',
+				'required'      => false,
 			),
 		),
 	),
@@ -385,7 +391,7 @@ if (1) {
 }
 // -------------------------------------------------------------------------------
 
-$buran_log = MODX_BASE_PATH.'_buran/log/sendmail/';
+$buran_log = MODX_BASE_PATH.'_buran/log/delta-mailer/';
 if ( ! file_exists($buran_log)) mkdir($buran_log,0755,true);
 $log = fopen($buran_log.'formochki','ab');
 $log_arr = array(
