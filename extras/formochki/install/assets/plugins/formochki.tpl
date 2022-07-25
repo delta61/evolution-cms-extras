@@ -4,8 +4,8 @@
  * Отправка писем с данными из форм
  *
  * @category    plugin
- * @version     3.8
- * @date        17.06.2022
+ * @version     3.9
+ * @date        25.07.2022
  * @author      sergey.it@delta-ltd.ru
  * @internal    @events OnWebPageInit
  *
@@ -17,11 +17,11 @@ if ($e->name != 'OnWebPageInit' || ! isset($_GET['delta-mailer-form-send'])) ret
 
 $upload_folder = 'assets/files/delta-mailer/';
 
-$archiver = 'tar'; // tar || zip
+$archiver = 'zip'; // zip | tar
 
 $forms = array(
 	1 => array(
-		'subject' => array('Подписка на новости','Подписка','Пользователь подписался','Subscribe'),
+		'subject'  => array('Письмо с сайта','Письмо','Сообщение','Обратная связь'),
 		'captcha'  => false,
 		'mailto'   => trim($modx->getConfig('pvsk_email_from_subscribe_form')),
 		'mailfrom' => false,
@@ -31,7 +31,8 @@ $forms = array(
 		'bcc'      => false,
 		'debug'    => false,
 		
-		'parent_for_mails' => 130,
+		'parent_for_mails' => 0,
+		'telegram' => false,
 		
 		'events' => array(
 			'before-email-is-sent' => array(
@@ -153,12 +154,12 @@ foreach ($form['fields'] AS &$field) {
 		if ( ! is_array($value) && ! is_array($value['name'])) continue;
 		
 		$archcreated = false;
-		$archext = 'tar';
-		$tarfile = false;
 		$zip = false;
 		if ($archiver == 'zip' && class_exists('ZipArchive')) {
 			$archext = 'zip';
 			$zip = new ZipArchive();
+		} else {
+			$archiver = $archext = 'tar';
 		}
 		$folder = md5('_'.$_SERVER['REMOTE_ADDR']);
 		$folder = $upload_folder.$folder.'/';
@@ -188,7 +189,7 @@ foreach ($form['fields'] AS &$field) {
 			
 			if ( ! $archcreated) {
 				$res = false;
-				if ($archext == 'zip') {
+				if ($archiver == 'zip') {
 					$res = $zip->open(MODX_BASE_PATH.$folder.$archfile,ZIPARCHIVE::CREATE | ZIPARCHIVE::OVERWRITE);
 				} else {
 					$res = tarOpen(MODX_BASE_PATH.$folder.$archfile);
@@ -202,7 +203,7 @@ foreach ($form['fields'] AS &$field) {
 			}
 			
 			$res = false;
-			if ($archext == 'zip') {
+			if ($archiver == 'zip') {
 				$res = $zip->addFile($tmpfile, $value['name'][$flkey]);
 			} else {
 				$res = tarAddFile($tarfile, $tmpfile, $value['name'][$flkey]);
@@ -214,7 +215,7 @@ foreach ($form['fields'] AS &$field) {
 			$addedtoarch = true;
 		}
 		if ( ! $addedtoarch || ! $archcreated) continue;
-		if ($archext == 'zip') {
+		if ($archiver == 'zip') {
 			$zip->close();
 		} else {
 			tarEmptyRow($tarfile);
@@ -388,6 +389,15 @@ if (1) {
 	} catch (Exception $e) {
 		$res_exc = $e->errorMessage();
 	}
+}
+if (1 && $form['telegram'] && $result) {
+	$res = $modx->runSnippet('Delta-TelegramBot',array(
+		'm' => 'sendmess',
+		'p' => array(
+			'text' => '❤️ Письмо! Отправлено с сайта на почту.',
+		),
+	));
+	$tlgrm_res = $res && $res['ok'] ? true : false;
 }
 // -------------------------------------------------------------------------------
 
